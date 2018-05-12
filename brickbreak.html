@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Gamedev Canvas Workshop</title>
+    <style>
+        canvas { /*background: #aaa;*/ display: block; margin: 0 auto;
+        background-image: url("벽돌.png")}
+    </style>
+</head>
+<body>
+    <div>
+        <input type="button" value="게임시작" onclick="level_1_Start()">
+        <input type="button" value="게임설명" onclick="gameExplain()">
+        <input id="level1" type="text" value="1단계">
+        <input id="level2" type="text" value="2단계">
+        <input id="level3" type="text" value="3단계">
+        <input id="level4" type="text" value="4단계">
+        <input id="level5" type="text" value="5단계">
+    </div>
+    <canvas id="Canvas" width="700" height="730"></canvas>
+<script>
+//레벨별 funtion으로 나눕니다.
+function level_1_Start() {
+    //해당 레벨의 색을 바꿔줍니다.
+    var level1 = document.getElementById("level1");
+    level1.style.backgroundColor = "blue";
+    var canvas = document.getElementById("Canvas");
+    var ctx = canvas.getContext("2d"); // 2d로 그리는것
+
+    //볼의 정보
+    var ballRadius = 10;
+    var x = canvas.width/2;
+    var y = canvas.height-30;
+    var moveX = 2;
+    var moveY = -2;
+
+    //패드 정보
+    var paddleHeight = 10;
+    var paddleWidth = 150;
+    var paddleX = (canvas.width-paddleWidth)/2;
+
+    // 패드 움직임 확인 변수
+    var rightPressed = false;
+    var leftPressed = false;
+
+    // 박스 정보
+    var boxXcount = 8; //가로로 놓을 벽돌의 개수
+    var boxYcount = 1; //세로로 놓을 벽돌의 개수
+    var boxWidth = 75; //벽돌의 길이
+    var boxHeight = 20; //벽돌의 높이
+    var boxDistance = 10; //벽돌 간격
+    var boxOffsetTop = 30; //화면 위에서부터의 간격
+    var boxOffsetLeft = 20; //화면 왼쪽에서부터의 간격
+
+    var checkCount = 0; //게임이 끝났는지 확인하기 위한 변수입니다.
+
+    //키보드에 입력되는 event를 읽습니다.
+    document.addEventListener("keydown", keyDownHandler, false);
+    document.addEventListener("keyup", keyUpHandler, false);
+
+    //입력된 벽돌의 갯수만큼의 2차원 배열을 만들어줍니다.
+    var box = [];
+    for(i=0; i<boxXcount; i++) {
+        box[i] = [];
+        for(j = 0; j < boxYcount; j++) {
+            box[i][j] = { x: 0, y: 0, status: 1/*벽돌의 삭제를위한 변수*/};
+        }
+    }
+
+    // 키보드 ←,→ 입력값을 확인합니다.
+    function keyDownHandler(argX) {
+        if(argX.keyCode == 39) {
+            rightPressed = true;
+        }
+        else if(argX.keyCode == 37) {
+            leftPressed = true;
+        }
+    }
+
+    function keyUpHandler(argX) {
+        if(argX.keyCode == 39) {
+            rightPressed = false;
+        }
+        else if(argX.keyCode == 37) {
+            leftPressed = false;
+        }
+    }
+
+    //공을 그려주는 function입니다.
+    function drawBall() {
+        ctx.beginPath(); // path시작
+        ctx.arc(x, y, ballRadius, 0, Math.PI*2); //시작x좌표, 시작y좌표, 공크기
+        ctx.strokeStyle = 'black'; // 공 테두리 그리는 메서드 stroke
+        ctx.stroke();
+        ctx.fillStyle = 'white';
+        ctx.fill();
+        ctx.closePath();
+    }
+
+    //아래 핸들bar를 만들어줍니다.
+    function drawHandle(){
+        ctx.beginPath();
+        ctx.rect(paddleX, canvas.height-paddleHeight, paddleWidth,paddleHeight);
+        ctx.fillStyle = 'black';
+        ctx.fill();
+        ctx.closePath();
+    }
+
+    //벽돌들을 만들어줍니다.
+    function drawBox() {
+        for(i = 0; i < boxXcount; i++) {
+            for(j = 0; j < boxYcount; j++) {
+                if(box[i][j].status == 1) {
+                    //왼쪽에서부터의 간격을 차례차례 배치하기 위해서 아래와 같이 값을 설정해줍니다.
+                    var boxX = (i * (boxWidth + boxDistance)) + boxOffsetLeft;
+                    var boxY = (j * (boxHeight + boxDistance)) + boxOffsetTop;
+                    box[i][j].x = boxX;
+                    box[i][j].y = boxY;
+                    ctx.beginPath();
+                    ctx.rect(boxX, boxY, boxWidth, boxHeight);
+                    ctx.fillStyle = "red";
+                    ctx.fill();
+                    ctx.closePath();
+                }
+            }
+        }
+    }
+    function collisionDetection() {
+        for(i = 0; i < boxXcount; i++) {
+            for(j = 0; j < boxYcount; j++) {
+                var b = box[i][j];
+                if(b.status == 1) {
+                    if(x > b.x && x < b.x+boxWidth && y > b.y && y < b.y+boxHeight) {
+                        moveY = -moveY;
+                        b.status = 0;
+                        checkCount++;
+                    }
+                }
+            }
+        }
+    }
+
+    //시작 drawfunction입니다.
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height); // 공이 지나간 곳 없애기
+        drawBall();
+        drawHandle();
+        drawBox();
+        collisionDetection();
+
+        if(x + moveX > canvas.width - ballRadius || x + moveX < ballRadius) {
+            moveX = -moveX;
+        }
+
+        if(y + moveY < ballRadius) {
+            moveY = -moveY;
+        }else if(y + moveY > canvas.height-ballRadius){
+            if(x > paddleX && x < paddleX + paddleWidth){
+                if(y = y-paddleHeight){
+                    moveY = -moveY;
+                }
+            }else {
+            alert("실패!");
+            document.location.reload();
+            }
+        }
+
+        //아래 handle바를 조정하여 움직입니다.
+        if(rightPressed && paddleX < canvas.width-paddleWidth) {
+            paddleX += 7;
+        }
+        else if(leftPressed && paddleX > 0) {
+            paddleX -= 7;
+        }
+        x += moveX;
+        y += moveY;
+
+        //만약 벽돌이 전부 부셔졌을 경우
+        if(checkCount == boxXcount * boxYcount){
+            clearInterval(repeat);
+            alert("stage 클리어!");
+            level_2_Start(); //레벨2로 가게 설정되었습니다.
+        }
+    }
+
+    var repeat = setInterval(draw, 10); // 0.005마다 draw 메서드 호출
+}
+
+function level_2_Start() {
+    var level1 = document.getElementById("level1");
+    level1.style.backgroundColor = "white";
+    var level2 = document.getElementById("level2");
+    level2.style.backgroundColor = "blue";
+    var canvas = document.getElementById("Canvas");
+    var ctx = canvas.getContext("2d"); // 2d로 그리는것
+    var ballRadius = 10;
+    var x = canvas.width/2;
+    var y = canvas.height-30;
+    var moveX = 2;
+    var moveY = -2;
+
+    //패드 정보
+    var paddleHeight = 10;
+    var paddleWidth = 100;
+    var paddleX = (canvas.width-paddleWidth)/2;
+
+    // 패드 움직임 확인 변수
+    var rightPressed = false;
+    var leftPressed = false;
+
+    // 박스 정보
+    var boxXcount = 8;
+    var boxYcount = 3;
+    var boxWidth = 75;
+    var boxHeight = 20;
+    var boxDistance = 10;
+    var boxOffsetTop = 30;
+    var boxOffsetLeft = 20;
+
+    var checkCount = 0;
+
+    document.addEventListener("keydown", keyDownHandler, false);
+    document.addEventListener("keyup", keyUpHandler, false);
+
+    var box = [];
+    for(i = 0; i < boxXcount; i++) {
+        box[i] = [];
+        for(j = 0; j < boxYcount; j++) {
+            box[i][j] = { x: 0, y: 0, status: 1 };
+        }
+    }
+    function keyDownHandler(argX) {
+        if(argX.keyCode == 39) {
+            rightPressed = true;
+
+        }
+        else if(argX.keyCode == 37) {
+            leftPressed = true;
+
+        }
+    }
+
+    function keyUpHandler(argX) {
+        if(argX.keyCode == 39) {
+            rightPressed = false;
+        }
+        else if(argX.keyCode == 37) {
+            leftPressed = false;
+        }
+    }
+
+    function drawBall() {
+        ctx.beginPath(); // path시작
+        ctx.arc(x, y, ballRadius, 0, Math.PI*2); //시작x좌표, 시작y좌표, 공크기, 몰라,
+        ctx.strokeStyle = 'black'; // 공 테두리 그리는 메서드 stroke
+        ctx.stroke();
+        ctx.fillStyle = 'white';
+        ctx.fill();
+        ctx.closePath();
+    }
+
+    function drawHandle(){
+        ctx.beginPath();
+        ctx.rect(paddleX, canvas.height-paddleHeight, paddleWidth,paddleHeight);
+        ctx.fillStyle = 'black';
+        ctx.fill();
+        ctx.closePath();
+    }
+
+    function drawBox() {
+        for(i = 0; i < boxXcount; i++) {
+            for(j = 0; j < boxYcount; j++) {
+                if(box[i][j].status == 1) {
+                    var boxX = (i * (boxWidth + boxDistance)) + boxOffsetLeft;
+                    var boxY = (j * (boxHeight + boxDistance)) + boxOffsetTop;
+                    box[i][j].x = boxX;
+                    box[i][j].y = boxY;
+                    ctx.beginPath();
+                    ctx.rect(boxX, boxY, boxWidth, boxHeight);
+                    ctx.fillStyle = "red";
+                    ctx.fill();
+                    ctx.closePath();
+                }
+            }
+        }
+    }
+    function collisionDetection() {
+        for(i = 0; i < boxXcount; i++) {
+            for(j = 0; j < boxYcount; j++) {
+                var b = box[i][j];
+                if(b.status == 1) {
+                    if(x > b.x && x < b.x+boxWidth && y > b.y && y < b.y+boxHeight) {
+                        moveY = -moveY;
+                        b.status = 0;
+                        checkCount++;
+                    }
+                }
+            }
+        }
+    }
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height); // 공이 지나간 곳 없애기
+        drawBall();
+        drawHandle();
+        drawBox();
+        collisionDetection();
+
+        if(x + moveX > canvas.width - ballRadius || x + moveX < ballRadius) {
+            moveX = -moveX;
+        }
+
+        if(y + moveY < ballRadius) {
+            moveY = -moveY;
+        }else if(y + moveY > canvas.height-ballRadius){
+            if(x > paddleX && x < paddleX + paddleWidth){
+                if(y = y-paddleHeight){
+                    moveY = -moveY;
+                }
+            }else {
+                alert("실패!");
+                document.location.reload();
+            }
+        }
+
+        if(rightPressed && paddleX < canvas.width-paddleWidth) {
+            paddleX += 7;
+        }
+        else if(leftPressed && paddleX > 0) {
+            paddleX -= 7;
+        }
+        x += moveX;
+        y += moveY;
+
+        if(checkCount == boxXcount * boxYcount){
+            clearInterval(repeat);
+            alert("stage2 클리어!");
+            level_3_Start();
+        }
+    }
+    var repeat = setInterval(draw, 5); // 0.005마다 draw 메서드 호출
+}
+
+function level_3_Start() {
+    var level2 = document.getElementById("level2");
+    level2.style.backgroundColor = "white";
+    var level3 = document.getElementById("level3");
+    level3.style.backgroundColor = "blue";
+    var canvas = document.getElementById("Canvas");
+    var ctx = canvas.getContext("2d"); // 2d로 그리는것
+    var ballRadius = 10;
+    var x = canvas.width/2;
+    var y = canvas.height-30;
+    var moveX = 2;
+    var moveY = -2;
+
+    //패드 정보
+    var paddleHeight = 10;
+    var paddleWidth = 70;
+    var paddleX = (canvas.width-paddleWidth)/2;
+
+    // 패드 움직임 확인 변수
+    var rightPressed = false;
+    var leftPressed = false;
+
+    // 박스 정보
+    var boxXcount = 8;
+    var boxYcount = 5;
+    var boxWidth = 75;
+    var boxHeight = 20;
+    var boxDistance = 10;
+    var boxOffsetTop = 30;
+    var boxOffsetLeft = 20;
+
+    var checkCount = 0;
+
+    document.addEventListener("keydown", keyDownHandler, false);
+    document.addEventListener("keyup", keyUpHandler, false);
+
+    var box = [];
+    for(i = 0; i < boxXcount; i++) {
+        box[i] = [];
+        for(j = 0; j < boxYcount; j++) {
+            box[i][j] = { x: 0, y: 0, status: 1 };
+        }
+    }
+    function keyDownHandler(argX) {
+        if(argX.keyCode == 39) {
+            rightPressed = true;
+
+        }
+        else if(argX.keyCode == 37) {
+            leftPressed = true;
+
+        }
+    }
+
+    function keyUpHandler(argX) {
+        if(argX.keyCode == 39) {
+            rightPressed = false;
+        }
+        else if(argX.keyCode == 37) {
+            leftPressed = false;
+        }
+    }
+
+    function drawBall() {
+        ctx.beginPath(); // path시작
+        ctx.arc(x, y, ballRadius, 0, Math.PI*2); //시작x좌표, 시작y좌표, 공크기, 몰라,
+        ctx.strokeStyle = 'black'; // 공 테두리 그리는 메서드 stroke
+        ctx.stroke();
+        ctx.fillStyle = 'white';
+        ctx.fill();
+        ctx.closePath();
+    }
+
+    function drawHandle(){
+        ctx.beginPath();
+        ctx.rect(paddleX, canvas.height-paddleHeight, paddleWidth,paddleHeight);
+        ctx.fillStyle = 'black';
+        ctx.fill();
+        ctx.closePath();
+    }
+
+    function drawBox() {
+        for(i = 0; i < boxXcount; i++) {
+            for(j = 0; j < boxYcount; j++) {
+                if(box[i][j].status == 1) {
+                    var boxX = (i * (boxWidth + boxDistance)) + boxOffsetLeft;
+                    var boxY = (j * (boxHeight + boxDistance)) + boxOffsetTop;
+                    box[i][j].x = boxX;
+                    box[i][j].y = boxY;
+                    ctx.beginPath();
+                    ctx.rect(boxX, boxY, boxWidth, boxHeight);
+                    ctx.fillStyle = "red";
+                    ctx.fill();
+                    ctx.closePath();
+                }
+            }
+        }
+    }
+    function collisionDetection() {
+        for(i = 0; i < boxXcount; i++) {
+            for(j = 0; j < boxYcount; j++) {
+                var b = box[i][j];
+                if(b.status == 1) {
+                    if(x > b.x && x < b.x+boxWidth && y > b.y && y < b.y+boxHeight) {
+                        moveY = -moveY;
+                        b.status = 0;
+                        checkCount++;
+                    }
+                }
+            }
+        }
+    }
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height); // 공이 지나간 곳 없애기
+        drawBall();
+        drawHandle();
+        drawBox();
+        collisionDetection();
+
+        if(x + moveX > canvas.width - ballRadius || x + moveX < ballRadius) {
+            moveX = -moveX;
+        }
+
+        if(y + moveY < ballRadius) {
+            moveY = -moveY;
+        }else if(y + moveY > canvas.height-ballRadius){
+            if(x > paddleX && x < paddleX + paddleWidth){
+                if(y = y-paddleHeight){
+                    moveY = -moveY;
+                }
+            }else {
+                alert("실패!");
+                document.location.reload();
+            }
+        }
+
+        if(rightPressed && paddleX < canvas.width-paddleWidth) {
+            paddleX += 7;
+        }
+        else if(leftPressed && paddleX > 0) {
+            paddleX -= 7;
+        }
+        x += moveX;
+        y += moveY;
+
+        if(checkCount == boxXcount * boxYcount){
+            clearInterval(repeat);
+            alert("stage3 클리어!");
+            level_4_Start();
+        }
+    }
+    var repeat = setInterval(draw, 3); // 0.005마다 draw 메서드 호출
+}
+
+function level_4_Start() {
+    var level3 = document.getElementById("level3");
+    level3.style.backgroundColor = "white";
+    var level4 = document.getElementById("level4");
+    level4.style.backgroundColor = "blue";
+    var canvas = document.getElementById("Canvas");
+    var ctx = canvas.getContext("2d"); // 2d로 그리는것
+    var ballRadius = 10;
+    var x = canvas.width/2;
+    var y = canvas.height-30;
+    var moveX = 2;
+    var moveY = -2;
+
+    //패드 정보
+    var paddleHeight = 10;
+    var paddleWidth = 50;
+    var paddleX = (canvas.width-paddleWidth)/2;
+
+    // 패드 움직임 확인 변수
+    var rightPressed = false;
+    var leftPressed = false;
+
+    // 박스 정보
+    var boxXcount = 8;
+    var boxYcount = 7;
+    var boxWidth = 75;
+    var boxHeight = 20;
+    var boxDistance = 10;
+    var boxOffsetTop = 30;
+    var boxOffsetLeft = 20;
+
+    var checkCount = 0;
+
+    document.addEventListener("keydown", keyDownHandler, false);
+    document.addEventListener("keyup", keyUpHandler, false);
+
+    var box = [];
+    for(i = 0; i < boxXcount; i++) {
+        box[i] = [];
+        for(j = 0; j < boxYcount; j++) {
+            box[i][j] = { x: 0, y: 0, status: 1 };
+        }
+    }
+    function keyDownHandler(argX) {
+        if(argX.keyCode == 39) {
+            rightPressed = true;
+
+        }
+        else if(argX.keyCode == 37) {
+            leftPressed = true;
+
+        }
+    }
+
+    function keyUpHandler(argX) {
+        if(argX.keyCode == 39) {
+            rightPressed = false;
+        }
+        else if(argX.keyCode == 37) {
+            leftPressed = false;
+        }
+    }
+
+    function drawBall() {
+        ctx.beginPath(); // path시작
+        ctx.arc(x, y, ballRadius, 0, Math.PI*2); //시작x좌표, 시작y좌표, 공크기, 몰라,
+        ctx.strokeStyle = 'black'; // 공 테두리 그리는 메서드 stroke
+        ctx.stroke();
+        ctx.fillStyle = 'white';
+        ctx.fill();
+        ctx.closePath();
+    }
+
+    function drawHandle(){
+        ctx.beginPath();
+        ctx.rect(paddleX, canvas.height-paddleHeight, paddleWidth,paddleHeight);
+        ctx.fillStyle = 'black';
+        ctx.fill();
+        ctx.closePath();
+    }
+
+    function drawBox() {
+        for(i = 0; i < boxXcount; i++) {
+            for(j = 0; j < boxYcount; j++) {
+                if(box[i][j].status == 1) {
+                    var boxX = (i * (boxWidth + boxDistance)) + boxOffsetLeft;
+                    var boxY = (j * (boxHeight + boxDistance)) + boxOffsetTop;
+                    box[i][j].x = boxX;
+                    box[i][j].y = boxY;
+                    ctx.beginPath();
+                    ctx.rect(boxX, boxY, boxWidth, boxHeight);
+                    ctx.fillStyle = "red";
+                    ctx.fill();
+                    ctx.closePath();
+                }
+            }
+        }
+    }
+    function collisionDetection() {
+        for(i = 0; i < boxXcount; i++) {
+            for(j = 0; j < boxYcount; j++) {
+                var b = box[i][j];
+                if(b.status == 1) {
+                    if(x > b.x && x < b.x+boxWidth && y > b.y && y < b.y+boxHeight) {
+                        moveY = -moveY;
+                        b.status = 0;
+                        checkCount++;
+                    }
+                }
+            }
+        }
+    }
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height); // 공이 지나간 곳 없애기
+        drawBall();
+        drawHandle();
+        drawBox();
+        collisionDetection();
+
+        if(x + moveX > canvas.width - ballRadius || x + moveX < ballRadius) {
+            moveX = -moveX;
+        }
+
+        if(y + moveY < ballRadius) {
+            moveY = -moveY;
+        }else if(y + moveY > canvas.height-ballRadius){
+            if(x > paddleX && x < paddleX + paddleWidth){
+                if(y = y-paddleHeight){
+                    moveY = -moveY;
+                }
+            }else {
+                alert("실패!");
+                document.location.reload();
+            }
+        }
+
+        if(rightPressed && paddleX < canvas.width-paddleWidth) {
+            paddleX += 7;
+        }
+        else if(leftPressed && paddleX > 0) {
+            paddleX -= 7;
+        }
+        x += moveX;
+        y += moveY;
+
+        if(checkCount == boxXcount * boxYcount){
+            clearInterval(repeat);
+            alert("stage4 클리어!");
+            level_5_Start();
+        }
+    }
+    var repeat = setInterval(draw, 3); // 0.005마다 draw 메서드 호출
+}
+
+function level_5_Start() {
+    var level4 = document.getElementById("level4");
+    level4.style.backgroundColor = "white";
+    var level5 = document.getElementById("level5");
+    level5.style.backgroundColor = "blue";
+    var canvas = document.getElementById("Canvas");
+    var ctx = canvas.getContext("2d"); // 2d로 그리는것
+    var ballRadius = 10;
+    var x = canvas.width/2;
+    var y = canvas.height-30;
+    var moveX = 2;
+    var moveY = -2;
+
+    //패드 정보
+    var paddleHeight = 10;
+    var paddleWidth = 30;
+    var paddleX = (canvas.width-paddleWidth)/2;
+
+    // 패드 움직임 확인 변수
+    var rightPressed = false;
+    var leftPressed = false;
+
+    // 박스 정보
+    var boxXcount = 8;
+    var boxYcount = 8;
+    var boxWidth = 75;
+    var boxHeight = 20;
+    var boxDistance = 10;
+    var boxOffsetTop = 30;
+    var boxOffsetLeft = 20;
+
+    var checkCount = 0;
+
+    document.addEventListener("keydown", keyDownHandler, false);
+    document.addEventListener("keyup", keyUpHandler, false);
+
+    var box = [];
+    for(i = 0; i < boxXcount; i++) {
+        box[i] = [];
+        for(j = 0; j < boxYcount; j++) {
+            box[i][j] = { x: 0, y: 0, status: 1 };
+        }
+    }
+    function keyDownHandler(argX) {
+        if(argX.keyCode == 39) {
+            rightPressed = true;
+
+        }
+        else if(argX.keyCode == 37) {
+            leftPressed = true;
+
+        }
+    }
+
+    function keyUpHandler(argX) {
+        if(argX.keyCode == 39) {
+            rightPressed = false;
+        }
+        else if(argX.keyCode == 37) {
+            leftPressed = false;
+        }
+    }
+
+    function drawBall() {
+        ctx.beginPath(); // path시작
+        ctx.arc(x, y, ballRadius, 0, Math.PI*2); //시작x좌표, 시작y좌표, 공크기, 몰라,
+        ctx.strokeStyle = 'black'; // 공 테두리 그리는 메서드 stroke
+        ctx.stroke();
+        ctx.fillStyle = 'white';
+        ctx.fill();
+        ctx.closePath();
+    }
+
+    function drawHandle(){
+        ctx.beginPath();
+        ctx.rect(paddleX, canvas.height-paddleHeight, paddleWidth,paddleHeight);
+        ctx.fillStyle = 'black';
+        ctx.fill();
+        ctx.closePath();
+    }
+
+    function drawBox() {
+        for(i = 0; i < boxXcount; i++) {
+            for(j = 0; j < boxYcount; j++) {
+                if(box[i][j].status == 1) {
+                    var boxX = (i * (boxWidth + boxDistance)) + boxOffsetLeft;
+                    var boxY = (j * (boxHeight + boxDistance)) + boxOffsetTop;
+                    box[i][j].x = boxX;
+                    box[i][j].y = boxY;
+                    ctx.beginPath();
+                    ctx.rect(boxX, boxY, boxWidth, boxHeight);
+                    ctx.fillStyle = "red";
+                    ctx.fill();
+                    ctx.closePath();
+                }
+            }
+        }
+    }
+    function collisionDetection() {
+        for(i = 0; i < boxXcount; i++) {
+            for(j = 0; j < boxYcount; j++) {
+                var b = box[i][j];
+                if(b.status == 1) {
+                    if(x > b.x && x < b.x+boxWidth && y > b.y && y < b.y+boxHeight) {
+                        moveY = -moveY;
+                        b.status = 0;
+                        checkCount++;
+                    }
+                }
+            }
+        }
+    }
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height); // 공이 지나간 곳 없애기
+        drawBall();
+        drawHandle();
+        drawBox();
+        collisionDetection();
+
+        if(x + moveX > canvas.width - ballRadius || x + moveX < ballRadius) {
+            moveX = -moveX;
+        }
+
+        if(y + moveY < ballRadius) {
+            moveY = -moveY;
+        }else if(y + moveY > canvas.height-ballRadius){
+            if(x > paddleX && x < paddleX + paddleWidth){
+                if(y = y-paddleHeight){
+                    moveY = -moveY;
+                }
+            }else {
+                alert("실패!");
+                document.location.reload();
+            }
+        }
+
+        if(rightPressed && paddleX < canvas.width-paddleWidth) {
+            paddleX += 7;
+        }
+        else if(leftPressed && paddleX > 0) {
+            paddleX -= 7;
+        }
+        x += moveX;
+        y += moveY;
+
+        if(checkCount == boxXcount * boxYcount){
+            clearInterval(repeat);
+            alert("전부 클리어했습니다><");
+
+        }
+    }
+    var repeat = setInterval(draw, 2); // 0.005마다 draw 메서드 호출
+}
+
+function gameExplain(){
+    alert("말 그대로 벽돌을 뽀수는 게임입니다.");
+}
+</script>
+
+</body>
+</html>
